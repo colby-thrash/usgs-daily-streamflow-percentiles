@@ -84,7 +84,8 @@ def create_gage_condition_map(gage_df, flow_data_col, map_schema, streamflow_dat
                              crs="EPSG:4326").to_crs("EPSG:5070")
         # Create map        
         m = folium.Map(
-                    location=(38.36768, -92.47729), 
+                    # location=(38.36768, -92.47729),  # orig
+                    location=(38.36768, -91.75),
                     zoom_start=7, 
                     tiles="Cartodb Positron",
                     # tiles = "OpenStreetmap",

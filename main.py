@@ -1,10 +1,12 @@
 
 import os
 from datetime import datetime, timedelta
-from src.map_fxns import create_gage_condition_map, prep_for_plotting, add_map_title
 from src.functions import get_usgs_gage_metadata, get_flow_data_time_series, get_recent_values
+from src.map_fxns import create_gage_condition_map, prep_for_plotting, add_map_title
 from src.percentile_fxns import get_rolling_avg_flow_data, get_percentiles, interpolate_percentile_of_recent_values, get_years_used_for_percentile_calcs
 from src.helper_fxns import remove_empty_df
+from src.web_fxns import update_index_file
+
 
 def main():
     print("Hello from streamflow-percentiles!")
@@ -32,6 +34,7 @@ def main():
         add_map_title(f'{day}-Day Streamflow Percentiles {yesterday_str}', m)
         m.save(yesterday_str + f'_{day}day.html')        
 
+    update_index_file(yesterday_str)
 
 if __name__ == "__main__":
     main()
