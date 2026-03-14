@@ -3,7 +3,7 @@
 
 
 ## 1-day streamflow percentile
-<iframe src="content/html-maps/2026-03-13_1day.html" height="700" width="800"></iframe>
+<iframe src="content/html-maps/2026-03-13_1day.html" height="700" width="850"></iframe>
 
 ## 7-day streamflow percentile
 <iframe src="content/html-maps/2026-03-09_7day.html" height="700" width="800"></iframe>
