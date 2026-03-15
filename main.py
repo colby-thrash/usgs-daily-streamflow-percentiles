@@ -7,6 +7,8 @@ from src.percentile_fxns import get_rolling_avg_flow_data, get_percentiles, inte
 from src.helper_fxns import remove_empty_df
 from src.web_fxns import update_index_file
 
+path_maps = r'content\html-maps'
+
 
 def main():
     print("Hello from streamflow-percentiles!")
@@ -32,7 +34,7 @@ def main():
         df_gage = prep_for_plotting(df, sites, percentile_year_count)
         m = create_gage_condition_map(df_gage, '00060_Mean', 'NWD', 'Current Daily Mean')
         add_map_title(f'{day}-Day Streamflow Percentiles {yesterday_str}', m)
-        m.save(yesterday_str + f'_{day}day.html')        
+        m.save(os.path.join(path_maps, yesterday_str + f'_{day}day.html'))        
 
     update_index_file(yesterday_str)
 
