@@ -75,7 +75,7 @@ def create_gage_condition_map(gage_df, flow_data_col, map_schema, streamflow_dat
                                                 'site_no':'USGS Gage ID',
                                                 'station_nm':'Streamgage Name',
                                                 'flow_cat':'Streamflow Category', 
-                                                'record_length_year': 'Recond Length (yr)'}
+                                                'record_length_yr': 'Recond Length (yr)'}
                                 )
         # convert dataframe to geopandas GeoDataFrame
         gage_df = gpd.GeoDataFrame(gage_df,
@@ -100,7 +100,7 @@ def create_gage_condition_map(gage_df, flow_data_col, map_schema, streamflow_dat
         gage_df.explore(m=m,
                             column="Streamflow Category",
                                 cmap=flow_cond_cmap,
-                                tooltip=["USGS Gage ID", "Streamgage Name", "Streamflow Category", "Discharge (cfs)", "Estimated Percentile", "Date", "record_length_yr"],
+                                tooltip=["USGS Gage ID", "Streamgage Name", "Streamflow Category", "Discharge (cfs)", "Estimated Percentile", "Date", 'Recond Length (yr)'],
                                 # tiles="CartoDB Positron",
                                 marker_kwds=dict(radius=5),
                                 legend_kwds=dict(caption=streamflow_data_type + '<br> Streamflow  Category', 

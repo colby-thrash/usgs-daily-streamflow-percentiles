@@ -34,9 +34,9 @@ def main():
         df_gage = prep_for_plotting(df, sites, percentile_year_count)
         m = create_gage_condition_map(df_gage, '00060_Mean', 'NWD', 'Current Daily Mean')
         add_map_title(f'{day}-Day Streamflow Percentiles {yesterday_str}', m)
-        m.save(os.path.join(path_maps, yesterday_str + f'_{day}day.html'))        
+        m.save(os.path.join(path_maps, f'streamflow-percentiles-{day:02d}day.html'))        
 
-    update_index_file(yesterday_str)
+    # update_index_file(yesterday_str)
 
 if __name__ == "__main__":
     main()
