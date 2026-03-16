@@ -9,6 +9,8 @@ import hyswap
 
 # print(os.getcwd())
 path_data = r'data\daily'
+if not os.path.isdir(path_data):
+    os.makedirs(path_data)
 
 with open('usgs_api_key.txt', 'r') as f:
     api_key = f.readline()
