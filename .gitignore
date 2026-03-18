@@ -9,6 +9,8 @@ wheels/
 # Virtual environments
 .venv
 
+.ipynb_checkpoints/ 
+src/.ipynb_checkpoints
 notes/
 usgs_api_key.txt
 data/*
