@@ -70,18 +70,31 @@ def create_gage_condition_map(gage_df, flow_data_col, map_schema, streamflow_dat
         gage_df.loc[gage_df['est_pct'].isna(), 'flow_cat'] = 'Not Ranked'
         flow_cond_cmap = flow_cond_cmap + ['#d3d3d3'] # light grey
         # renaming columns with user friendly names for map
+    
+        # gage_df = gage_df.rename(columns={flow_data_col:'Discharge (cfs)',
+        #                                         'est_pct':'Estimated Percentile',
+        #                                         'site_no':'USGS Gage ID',
+        #                                         'station_nm':'Streamgage Name',
+        #                                         'flow_cat':'Streamflow Category', 
+        #                                         'record_length_yr': 'Recond Length (yr)'}
+        #                         )
+
         gage_df = gage_df.rename(columns={flow_data_col:'Discharge (cfs)',
-                                                'est_pct':'Estimated Percentile',
-                                                'site_no':'USGS Gage ID',
-                                                'station_nm':'Streamgage Name',
-                                                'flow_cat':'Streamflow Category', 
-                                                'record_length_yr': 'Recond Length (yr)'}
+                                            'est_pct':'Estimated Percentile',
+                                            'monitoring_location_id':'USGS Gage ID',
+                                            'monitoring_location_name':'Streamgage Name',
+                                            'flow_cat':'Streamflow Category', 
+                                            'record_length_yr': 'Recond Length (yr)'}
                                 )
+
         # convert dataframe to geopandas GeoDataFrame
-        gage_df = gpd.GeoDataFrame(gage_df,
-                             geometry=gpd.points_from_xy(gage_df.dec_long_va,
-                                                               gage_df.dec_lat_va),
-                             crs="EPSG:4326").to_crs("EPSG:5070")
+        # gage_df = gpd.GeoDataFrame(gage_df,
+        #                      geometry=gpd.points_from_xy(gage_df.dec_long_va,
+        #                                                        gage_df.dec_lat_va),
+        #                      crs="EPSG:4326").to_crs("EPSG:5070")
+
+        gage_df = gage_df.set_crs(crs="EPSG:4326").to_crs("EPSG:5070")
+
         # Create map        
         m = folium.Map(
                     # location=(38.36768, -92.47729),  # orig

@@ -4,7 +4,7 @@ import glob
 from datetime import datetime, timedelta
 from dataretrieval import waterdata, nwis
 import pandas as pd
-from .helper_fxns import qaqc_usgs_data
+from .helper_fxns import qaqc_usgs_data, chunk_data
 import hyswap
 
 # print(os.getcwd())
@@ -22,7 +22,7 @@ def activate_usgs_api_key():
     except:
         print("Code being run without a USGS API key")
 
-def get_usgs_gage_metadata(today):
+def get_usgs_gage_metadata_nwis(today):
     
     state = 'MO'
     # Query NWIS for what streamgage sites were active within this year
@@ -34,6 +34,50 @@ def get_usgs_gage_metadata(today):
     ) #, siteType='ST')
     
     return sites
+
+def get_usgs_gage_metadata():
+    '''
+    With the switch from nwis to waterdata, this is now a two step process. 
+    The first call is to waterdata.get_time_series_metadata() 
+    The location ids from that call are used as input to waterdata.get_monitoring_locations() which has more metadata about the site
+
+    The output is a df similar to the sites df from the nwis implimentation but with some different properties and property names. 
+    '''
+    
+    # Query Water Data APIs for what monitoring locations were active within the last week
+    active_time_series, _ = waterdata.get_time_series_metadata(
+        state_name='Missouri',
+        parameter_code='00060',
+        statistic_id='00003', #daily mean
+        end_utc='P1W',
+        skip_geometry=True,
+        )
+
+    site_ids = active_time_series['monitoring_location_id'].unique().tolist()
+    properties = [
+        'monitoring_location_id', 
+        'agency_code', 
+        'monitoring_location_name', 
+        'county_name',
+        'drainage_area', 
+        'site_type', 
+        'hydrologic_unit_code', 
+        'altitude', 
+        'vertical_datum', 
+        'original_horizontal_datum'
+    ]
+    
+    active_stream_gages = pd.DataFrame()
+    for chunk_ids in chunk_data(site_ids, 200):
+        df, _ = waterdata.get_monitoring_locations(
+            monitoring_location_id=chunk_ids,
+            properties=properties,
+            # site_type_code='ST',
+        )
+        
+        active_stream_gages = pd.concat([active_stream_gages, df])
+    
+    return active_stream_gages
 
 
 def get_usgs_daily_api(site_no, start='1850-01-01', end=None, pcode='00060'):

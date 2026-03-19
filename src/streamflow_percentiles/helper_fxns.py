@@ -9,6 +9,10 @@ def qaqc_usgs_data(df, data_column_name):
     # add any additional QAQC steps needed
     return df
 
+def chunk_data(data, size):
+    for i in range(0, len(data), size):
+        yield data[i: i+size]
+
 def remove_empty_df(sites, flow_data: dict):
 
     flow_data_trimmed = {}

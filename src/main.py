@@ -19,7 +19,6 @@ from streamflow_percentiles.percentile_fxns import (
     interpolate_percentile_of_recent_values, 
     get_years_used_for_percentile_calcs
     ) 
-from streamflow_percentiles.helper_fxns import remove_empty_df
 
 path_maps = r'content\html-maps'
 
@@ -28,13 +27,12 @@ def main():
     today = str(datetime.today().date())
     yesterday_str = str(datetime.today().date() - timedelta(days=1))
     print(today)
-    # today = '2026-03-09'
 
     activate_usgs_api_key()
-    sites = get_usgs_gage_metadata(today)
-    sites = sites.iloc[-3:]
+    sites = get_usgs_gage_metadata()
+    sites = sites.iloc[:]
+    sites['site_no'] = sites.monitoring_location_id.str[5:]
     flow_data = get_flow_data_time_series(sites.site_no, today)
-    sites, flow_data = remove_empty_df(sites, flow_data)
         
     for day in [1, 7, 14, 28]:
         recent_dvs = get_recent_values(flow_data, today, day)
@@ -48,8 +46,6 @@ def main():
         m = create_gage_condition_map(df_gage, '00060_Mean', 'NWD', 'Current Daily Mean')
         add_map_title(f'{day}-Day Streamflow Percentiles {yesterday_str}', m)
         m.save(os.path.join(path_maps, f'streamflow-percentiles-{day:02d}day.html'))        
-
-    # update_index_file(yesterday_str)
 
 if __name__ == "__main__":
     main()
