@@ -1,12 +1,13 @@
 
 import os
 from datetime import datetime, timedelta
+
 from streamflow_percentiles.functions import (
+    activate_usgs_api_key,
     get_usgs_gage_metadata, 
     get_flow_data_time_series, 
     get_recent_values
     )
-# from .functions import get_usgs_gage_metadata, get_flow_data_time_series, get_recent_values
 from streamflow_percentiles.map_fxns import (
     create_gage_condition_map, 
     prep_for_plotting, 
@@ -19,22 +20,20 @@ from streamflow_percentiles.percentile_fxns import (
     get_years_used_for_percentile_calcs
     ) 
 from streamflow_percentiles.helper_fxns import remove_empty_df
-# from streamflow_percentiles.web_fxns import update_index_file
 
-path_maps = r'..\content\html-maps'
-
+path_maps = r'content\html-maps'
 
 def main():
     print("Hello from streamflow-percentiles!")
-    print(os.getcwd())
     today = str(datetime.today().date())
     yesterday_str = str(datetime.today().date() - timedelta(days=1))
     print(today)
     # today = '2026-03-09'
 
+    activate_usgs_api_key()
     sites = get_usgs_gage_metadata(today)
     sites = sites.iloc[-3:]
-    flow_data = get_flow_data_time_series(sites, today)
+    flow_data = get_flow_data_time_series(sites.site_no, today)
     sites, flow_data = remove_empty_df(sites, flow_data)
         
     for day in [1, 7, 14, 28]:

@@ -21,11 +21,11 @@ def get_rolling_avg_flow_data(flow_data, day):
 
 
 ## THIS IS THE FUNCTION THAT GREATLY REDUCES THE TIME IN THE SLOW PART OF THE CODE
-def calculate_single_day_percentile_thresholds(df, today, percentile_levels):
+def calculate_single_day_percentile_thresholds(df, today, percentile_levels) -> pd.DataFrame:
     '''
     input is [df time series of all data for single gage, value want percentile for, date as str for last data update]
 
-    output is df of thresholds
+    Returns df of thresholds. The thresholds (percentile_levels) and percentile values are tied together.
     '''
     
     # yesterday_md = str(datetime.today().date() - timedelta(days=1))[-5:]

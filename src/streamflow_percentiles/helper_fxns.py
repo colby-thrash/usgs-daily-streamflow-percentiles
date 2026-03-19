@@ -1,6 +1,5 @@
 import numpy as np
 
-# Data QAQC function for provisional NWIS data
 def qaqc_usgs_data(df, data_column_name):
     #replace invalid -999999 values with NA
     try:

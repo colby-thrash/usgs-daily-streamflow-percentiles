@@ -2,25 +2,30 @@
 import os
 import glob
 from datetime import datetime, timedelta
-from dataretrieval import nwis
+from dataretrieval import waterdata, nwis
 import pandas as pd
 from .helper_fxns import qaqc_usgs_data
 import hyswap
 
 # print(os.getcwd())
-path_data = r'..\data\daily'
+path_data = r'data\daily'
 if not os.path.isdir(path_data):
     os.makedirs(path_data)
 
-with open(r'..\usgs_api_key.txt', 'r') as f:
-    api_key = f.readline()
-    os.environ["API_USGS_PAT"] = api_key
-    
+def activate_usgs_api_key():
+    # register for key: https://api.waterdata.usgs.gov/signup/
+    try:
+        with open(r'usgs_api_key.txt', 'r') as f:
+            api_key = f.readline()
+            os.environ["API_USGS_PAT"] = api_key
+            print('USGS API key found successfully')
+    except:
+        print("Code being run without a USGS API key")
 
 def get_usgs_gage_metadata(today):
     
     state = 'MO'
-    # Query NWIS for what streamgage sites were active within the last week
+    # Query NWIS for what streamgage sites were active within this year
     sites, _ = nwis.what_sites(
         stateCd=state, 
         parameterCd=['00060'], 
@@ -82,9 +87,9 @@ def update_local_data(fn_local, fn_today, site_no, today):
 
 
 
-def get_flow_data_time_series(sites: pd.DataFrame, today) -> dict[str, pd.DataFrame]:
+def get_flow_data_time_series(site_nos: iter, today) -> dict[str, pd.DataFrame]:
     '''
-    sites: df is output of nwis.what_sites()
+    site_nos: iterable of gage site numbers. Used in file name and as output dict keys. 
 
     output: dictionary keys is string site number with df time series of all daily data for the site
 
@@ -93,10 +98,8 @@ def get_flow_data_time_series(sites: pd.DataFrame, today) -> dict[str, pd.DataFr
     '''
 
     flow_data = {}
-    
-    # path_data = r'..\data\daily'
-    
-    for site_no in sites['site_no'].iloc[:]:
+        
+    for site_no in site_nos:
     
         fn_today = os.path.join(path_data, site_no + f'_{today}.csv')
         glob_site = glob.glob(os.path.join(path_data, site_no + '*csv'))
