@@ -8,11 +8,11 @@ from .helper_fxns import qaqc_usgs_data
 import hyswap
 
 # print(os.getcwd())
-path_data = r'..\data\daily'
+path_data = r'data\daily'
 if not os.path.isdir(path_data):
     os.makedirs(path_data)
 
-with open(r'..\usgs_api_key.txt', 'r') as f:
+with open(r'usgs_api_key.txt', 'r') as f:
     api_key = f.readline()
     os.environ["API_USGS_PAT"] = api_key
     

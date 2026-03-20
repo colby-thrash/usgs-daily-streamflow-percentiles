@@ -21,7 +21,7 @@ from streamflow_percentiles.percentile_fxns import (
 from streamflow_percentiles.helper_fxns import remove_empty_df
 # from streamflow_percentiles.web_fxns import update_index_file
 
-path_maps = r'..\content\html-maps'
+path_maps = r'content\html-maps'
 
 
 def main():
@@ -33,7 +33,7 @@ def main():
     # today = '2026-03-09'
 
     sites = get_usgs_gage_metadata(today)
-    sites = sites.iloc[-3:]
+    sites = sites.iloc[:]
     flow_data = get_flow_data_time_series(sites, today)
     sites, flow_data = remove_empty_df(sites, flow_data)
         
