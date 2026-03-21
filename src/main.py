@@ -30,9 +30,9 @@ def main():
 
     activate_usgs_api_key()
     sites = get_usgs_gage_metadata()
-    sites = sites.iloc[:]
-    sites['site_no'] = sites.monitoring_location_id.str[5:]
-    flow_data = get_flow_data_time_series(sites.site_no, today)
+    sites = sites.iloc[-10:]
+    # sites['site_no'] = sites.monitoring_location_id.str[5:]
+    flow_data = get_flow_data_time_series(sites.monitoring_location_id.str[5:], today)
         
     for day in [1, 7, 14, 28]:
         recent_dvs = get_recent_values(flow_data, today, day)
@@ -43,7 +43,7 @@ def main():
         df = interpolate_percentile_of_recent_values(recent_dvs, percentiles)
 
         df_gage = prep_for_plotting(df, sites, percentile_year_count)
-        m = create_gage_condition_map(df_gage, '00060_Mean', 'NWD', 'Current Daily Mean')
+        m = create_gage_condition_map(df_gage, 'daily', 'value', 'NWD', 'Current Daily Mean')
         add_map_title(f'{day}-Day Streamflow Percentiles {yesterday_str}', m)
         m.save(os.path.join(path_maps, f'streamflow-percentiles-{day:02d}day.html'))        
 

@@ -12,16 +12,16 @@ def get_percentil_levels():
     return percentile_levels
 
 
-def get_rolling_avg_flow_data(flow_data, day):
+def get_rolling_avg_flow_data(flow_data, day, col='value'):
     flow_data_nday = {}
     for site_no, df in flow_data.items():
         if not df.empty:
-            flow_data_nday[site_no] = hyswap.utils.rolling_average(df, '00060_Mean', f'{day}D').round(2)
+            flow_data_nday[site_no] = hyswap.utils.rolling_average(df, col, f'{day}D').round(2)
     return flow_data_nday
 
 
 ## THIS IS THE FUNCTION THAT GREATLY REDUCES THE TIME IN THE SLOW PART OF THE CODE
-def calculate_single_day_percentile_thresholds(df, today, percentile_levels) -> pd.DataFrame:
+def calculate_single_day_percentile_thresholds(df, today, percentile_levels, col='value') -> pd.DataFrame:
     '''
     input is [df time series of all data for single gage, value want percentile for, date as str for last data update]
 
@@ -31,7 +31,7 @@ def calculate_single_day_percentile_thresholds(df, today, percentile_levels) -> 
     # yesterday_md = str(datetime.today().date() - timedelta(days=1))[-5:]
     yesterday_md = str(datetime.strptime(today, '%Y-%m-%d').date() - timedelta(1))[-5:]
     
-    s_doy = hyswap.filter_data_by_month_day(df, yesterday_md, '00060_Mean')
+    s_doy = hyswap.filter_data_by_month_day(df, yesterday_md, col)
     # display(s_doy)
     
     ptile_thresholds = hyswap.calculate_fixed_percentile_thresholds(s_doy, percentiles=percentile_levels)
@@ -46,7 +46,7 @@ def calculate_single_day_percentile_thresholds(df, today, percentile_levels) -> 
 
 ## calculate percentiles of n day rolling avreaged time series data   
 
-def get_percentiles(sites, flow_data, today) -> dict[str, pd.DataFrame]:
+def get_percentiles(sites, flow_data, today, col='value', filt_col='approval_status') -> dict[str, pd.DataFrame]:
     '''
     flow_data = dict[site_no: df.nday]
 
@@ -67,10 +67,10 @@ def get_percentiles(sites, flow_data, today) -> dict[str, pd.DataFrame]:
             print(f'{site_no} does not have 30 years of data')
             continue
         
-        if '00060_Mean' in flow_data[site_no].columns:
+        if col in flow_data[site_no].columns:
             print(f'{site_no} precentile calculated')
             # Filter data as only approved data in NWIS should be used to calculate statistics
-            df = hyswap.utils.filter_approved_data(flow_data[site_no], '00060_Mean_cd')
+            df = hyswap.utils.filter_approved_data(flow_data[site_no], filt_col)
 
             ## New method to only calculate for the current day of year of interest
             percentile_thresholds[site_no] = calculate_single_day_percentile_thresholds(df, today, get_percentil_levels())        
@@ -84,10 +84,12 @@ def get_percentiles(sites, flow_data, today) -> dict[str, pd.DataFrame]:
 
 ## Use percentile thresholds to interpolate the percentile value for the new value. 
 
-def interpolate_percentile_of_recent_values(recent_dvs: pd.DataFrame, percentile_values):
+def interpolate_percentile_of_recent_values(recent_dvs: pd.DataFrame, percentile_values, col='value'):
+    
 
     df = pd.DataFrame()
-    for site_no, site_df in recent_dvs.groupby(level="site_no", group_keys=True):  
+    # for site_no, site_df in recent_dvs.groupby(level="site_no", group_keys=True):  
+    for site_no, site_df in recent_dvs.groupby('site_no'):
         # print(f'{site_no} {len(site_df)}')
         if site_no not in list(percentile_values.keys()):
             # print(f'{site_no} not in percentile_values')
@@ -99,12 +101,12 @@ def interpolate_percentile_of_recent_values(recent_dvs: pd.DataFrame, percentile
         # percentiles = hyswap.percentiles.calculate_multiple_variable_percentiles_from_values(
         #     site_df,'00060_Mean', percentile_values[site_no])
         
-        if site_df['00060_Mean'].isna().values[-1]:
+        if site_df[col].isna().values[-1]:
             # print(f'{site_no} past_dvs_nd is Nan')
             continue 
             
         percentile = hyswap.percentiles.calculate_fixed_percentile_from_value(
-            site_df['00060_Mean'], percentile_values[site_no])
+            site_df[col], percentile_values[site_no])
     
         site_df['est_pct'] = percentile                
         df = pd.concat([df, site_df])

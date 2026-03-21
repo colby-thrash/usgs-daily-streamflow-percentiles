@@ -35,7 +35,7 @@ def get_usgs_gage_metadata_nwis(today):
     
     return sites
 
-def get_usgs_gage_metadata():
+def get_usgs_gage_metadata(pcode='00060'):
     '''
     With the switch from nwis to waterdata, this is now a two step process. 
     The first call is to waterdata.get_time_series_metadata() 
@@ -47,7 +47,7 @@ def get_usgs_gage_metadata():
     # Query Water Data APIs for what monitoring locations were active within the last week
     active_time_series, _ = waterdata.get_time_series_metadata(
         state_name='Missouri',
-        parameter_code='00060',
+        parameter_code=pcode,
         statistic_id='00003', #daily mean
         end_utc='P1W',
         skip_geometry=True,
@@ -79,22 +79,35 @@ def get_usgs_gage_metadata():
     
     return active_stream_gages
 
-
-def get_usgs_daily_api(site_no, start='1850-01-01', end=None, pcode='00060'):
-        
-    df = nwis.get_record(
-            sites=site_no, 
-            parameterCd=pcode, 
-            start=start, 
-            end=end, 
-            service='dv'
-        ).drop('site_no', axis=1) # don't need to save the extra data if it's in the file name. Can add back later if needed. 
+   
+def get_usgs_daily_api(site_id, start='1850-01-01', pcode='00060'):
+    
+    properties = [
+        'time', 
+        'value', 
+        'approval_status', 
+        'qualifier',
+        'monitoring_location_id',
+        # 'parameter_code', 
+        # 'statistic_id'
+        # unit_of_measure
+        ]
+    
+    df, _ = waterdata.get_daily(
+        monitoring_location_id=site_id,
+        parameter_code=pcode,
+        statistic_id='00003', # mean daily discharge
+        time = '/'.join([start, '..']),
+        skip_geometry=True,
+        properties = properties,
+       )
+    df.set_index('time', inplace=True)
 
     return df
 
 
 def load_local_data(fn):
-    return pd.read_csv(fn, index_col='datetime', parse_dates=['datetime'])
+    return pd.read_csv(fn, parse_dates=['time']).set_index('time', drop=False)
 
 def update_local_data(fn_local, fn_today, site_no, today):
     '''
@@ -109,16 +122,12 @@ def update_local_data(fn_local, fn_today, site_no, today):
     
     df_local = load_local_data(fn_local)
     
-    if df_local.empty: # this shouldn't happen again in the future bc of checks in get_flow_data_time_series
-        return df_local
-    
-    # last_local_date = fn_site.split('_')[-1].strip('.csv')
     last_local_date = df_local.index[-1].replace(tzinfo=None)
     
     if last_local_date < datetime.strptime(today, '%Y-%m-%d'):
         
         query_start_date_str = str((last_local_date + timedelta(days=1)).date())
-        df_new = get_usgs_daily_api(site_no, start=query_start_date_str)     ## add end = yesterday to get rid of potential date mixup       
+        df_new = get_usgs_daily_api('USGS-'+site_no, start=query_start_date_str)     ## add end = yesterday to get rid of potential date mixup?       
 
         df = pd.concat([df_local, df_new])
         os.remove(fn_local)
@@ -131,7 +140,7 @@ def update_local_data(fn_local, fn_today, site_no, today):
 
 
 
-def get_flow_data_time_series(site_nos: iter, today) -> dict[str, pd.DataFrame]:
+def get_flow_data_time_series(site_nos: iter, today: str) -> dict[str, pd.DataFrame]:
     '''
     site_nos: iterable of gage site numbers. Used in file name and as output dict keys. 
 
@@ -157,7 +166,7 @@ def get_flow_data_time_series(site_nos: iter, today) -> dict[str, pd.DataFrame]:
             # flow_data[site_no] = df
             # continue
             
-        ## Check if gage but not today's date exist. If so, only update data. Don't redownload the whole thing. 
+        ## Check if find gage but not today's date. If so, only update data. Don't redownload the whole thing. 
         elif len(glob_site) > 0:
             print('2')
             fn_local = glob_site[-1]
@@ -165,11 +174,10 @@ def get_flow_data_time_series(site_nos: iter, today) -> dict[str, pd.DataFrame]:
             
         else:
             print('3')
-            df = get_usgs_daily_api(site_no, end=today)
+            df = get_usgs_daily_api('USGS-'+site_no)
             if not df.empty:
                 df.to_csv(fn_today)
 
-        # flow_data[site_no] = qaqc_usgs_data(df, '00060_Mean') # breaks with an empty. WHen do I need to do qaqc?
         if not df.empty:
             flow_data[site_no] = df
 
@@ -189,20 +197,19 @@ def get_sites_local():
     return sites_lst
 
 
-def get_recent_values(flow_data, today, day=1) -> pd.DataFrame:
+def get_recent_values(flow_data, today, day=1, col='value') -> pd.DataFrame:
     '''
     Get last n days worth of data to use as "current". Get rolling average
 
     today = str of day data were collected. So typically last day of data should be from "yesterday"
     
     day = 1, 7, 14, or 24
+    
+    col = column of data frame to do data processing on.
 
     returns df with single, {day}-day averaged value for each gage. 
     '''
 
-    assert day in [1, 7, 14, 28], 'Only for 1, 7, 14, or 28 day averages'    
-
-    
     stop = yesterday = datetime.strptime(today, '%Y-%m-%d') - timedelta(1)
     start = yesterday
     if day > 1:
@@ -211,18 +218,15 @@ def get_recent_values(flow_data, today, day=1) -> pd.DataFrame:
     recent_dvs = pd.DataFrame()
     for site_no, df in flow_data.items():
 
-        df = qaqc_usgs_data(df, '00060_Mean')
-            
+        df = qaqc_usgs_data(df, col)
+        
         if not df.empty:  
             df['site_no'] = site_no
             df_rolled = hyswap.utils.rolling_average(
                 # df.iloc[-day:],   # initial method
                 df.loc[str(start):str(yesterday)],  #use dates explicitly in case last date not consistent (this has happened) 
-                '00060_Mean', 
-                f'{day}D').dropna()  
+                col, 
+                f'{day}D').dropna(subset=col)  
             recent_dvs = pd.concat([recent_dvs, df_rolled], axis=0)
-    
-    recent_dvs.set_index('site_no', append=True, inplace=True) # adding it back into the df
-    recent_dvs.swaplevel('site_no', 'datetime')  # trouble shooting formatting only
     
     return recent_dvs
