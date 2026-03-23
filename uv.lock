@@ -1239,7 +1239,6 @@ requires-dist = [
     { name = "hyswap", specifier = ">=1.0.0" },
     { name = "ipympl", specifier = ">=0.10.0" },
     { name = "mapclassify", specifier = ">=2.10.0" },
-    { name = "streamflow-percentiles" },
 ]
 
 [[package]]
