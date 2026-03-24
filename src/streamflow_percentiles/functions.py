@@ -7,7 +7,6 @@ import pandas as pd
 from .helper_fxns import qaqc_usgs_data, chunk_data
 import hyswap
 
-# print(os.getcwd())
 path_data = r'data\daily'
 if not os.path.isdir(path_data):
     os.makedirs(path_data)
@@ -35,18 +34,20 @@ def get_usgs_gage_metadata_nwis(today):
     
     return sites
 
-def get_usgs_gage_metadata(pcode='00060'):
+def get_usgs_gage_metadata(state_name='Missouri', pcode='00060'):
     '''
     With the switch from nwis to waterdata, this is now a two step process. 
     The first call is to waterdata.get_time_series_metadata() 
     The location ids from that call are used as input to waterdata.get_monitoring_locations() which has more metadata about the site
 
-    The output is a df similar to the sites df from the nwis implimentation but with some different properties and property names. 
+    Output: 
+        df with metadata about the site. data columns are defined by properties list
+        Note that column names are different from the NWIS API
     '''
     
     # Query Water Data APIs for what monitoring locations were active within the last week
     active_time_series, _ = waterdata.get_time_series_metadata(
-        state_name='Missouri',
+        state_name=state_name,
         parameter_code=pcode,
         statistic_id='00003', #daily mean
         end_utc='P1W',
@@ -97,9 +98,9 @@ def get_usgs_daily_api(site_id, start='1850-01-01', pcode='00060'):
         monitoring_location_id=site_id,
         parameter_code=pcode,
         statistic_id='00003', # mean daily discharge
-        time = '/'.join([start, '..']),
+        time='/'.join([start, '..']),
         skip_geometry=True,
-        properties = properties,
+        properties=properties,
        )
     df.set_index('time', inplace=True)
 
@@ -108,6 +109,7 @@ def get_usgs_daily_api(site_id, start='1850-01-01', pcode='00060'):
 
 def load_local_data(fn):
     return pd.read_csv(fn, parse_dates=['time']).set_index('time', drop=False)
+
 
 def update_local_data(fn_local, fn_today, site_no, today):
     '''
@@ -139,10 +141,9 @@ def update_local_data(fn_local, fn_today, site_no, today):
     return df
 
 
-
-def get_flow_data_time_series(site_nos: iter, today: str) -> dict[str, pd.DataFrame]:
+def get_flow_data_time_series(site_nos: [pd.Series | list], today: str) -> dict[str, pd.DataFrame]:
     '''
-    site_nos: iterable of gage site numbers. Used in file name and as output dict keys. 
+    site_nos: iterable of strings of gage site numbers. Used in file name and as output dict keys. 
 
     output: dictionary keys is string site number with df time series of all daily data for the site
 
@@ -159,61 +160,47 @@ def get_flow_data_time_series(site_nos: iter, today: str) -> dict[str, pd.DataFr
 
         print(fn_today, end=' - ')
     
-        ## Check if gage & today's date exist
+        ## Check if gage & today's date exist locally
         if os.path.isfile(fn_today):
-            print('1')
+            print('Loading Local Data')
             df = load_local_data(fn_today)
-            # flow_data[site_no] = df
-            # continue
             
         ## Check if find gage but not today's date. If so, only update data. Don't redownload the whole thing. 
         elif len(glob_site) > 0:
-            print('2')
+            print('Appending recent USGS API Data to Local Data')
             fn_local = glob_site[-1]
             df = update_local_data(fn_local, fn_today, site_no, today)
             
         else:
-            print('3')
+            print('Download all data from USGS API')
             df = get_usgs_daily_api('USGS-'+site_no)
             if not df.empty:
                 df.to_csv(fn_today)
 
         if not df.empty:
             flow_data[site_no] = df
-
-        
+ 
     return flow_data
-
-
-
-#%% Hack to load data without making a call to nwis.what_sites to get the gages
-
-def get_sites_local():
-    path_data = r'..\data\daily'
-    sites_lst = []
-    for fn in os.listdir(path_data):
-        if '.csv' in fn:
-            sites_lst.append(fn.split('_')[0])
-    return sites_lst
 
 
 def get_recent_values(flow_data, today, day=1, col='value') -> pd.DataFrame:
     '''
     Get last n days worth of data to use as "current". Get rolling average
 
-    today = str of day data were collected. So typically last day of data should be from "yesterday"
-    
-    day = 1, 7, 14, or 24
-    
-    col = column of data frame to do data processing on.
+    Input: 
+        flow_data: 
+        today = str of day data were collected. So typically last day of data should be from "yesterday"
+        day = 1, 7, 14, or 24
+        col = column of data frame to do data processing on
 
-    returns df with single, {day}-day averaged value for each gage. 
+    Output: 
+        df with single, {day}-day averaged value for each gage
     '''
 
-    stop = yesterday = datetime.strptime(today, '%Y-%m-%d') - timedelta(1)
+    yesterday = datetime.strptime(today, '%Y-%m-%d') - timedelta(1)
     start = yesterday
     if day > 1:
-        start = yesterday - timedelta(day-1) #-1 bc both ends are inclusive in date index
+        start = yesterday - timedelta(day-1) # day-1 bc both ends are inclusive in date index
 
     recent_dvs = pd.DataFrame()
     for site_no, df in flow_data.items():
