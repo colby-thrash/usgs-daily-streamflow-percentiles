@@ -1,12 +1,13 @@
 
 import os
 from datetime import datetime, timedelta
+
 from streamflow_percentiles.functions import (
+    activate_usgs_api_key,
     get_usgs_gage_metadata, 
     get_flow_data_time_series, 
     get_recent_values
     )
-# from .functions import get_usgs_gage_metadata, get_flow_data_time_series, get_recent_values
 from streamflow_percentiles.map_fxns import (
     create_gage_condition_map, 
     prep_for_plotting, 
@@ -18,39 +19,32 @@ from streamflow_percentiles.percentile_fxns import (
     interpolate_percentile_of_recent_values, 
     get_years_used_for_percentile_calcs
     ) 
-from streamflow_percentiles.helper_fxns import remove_empty_df
-# from streamflow_percentiles.web_fxns import update_index_file
 
 path_maps = r'content\html-maps'
 
-
 def main():
     print("Hello from streamflow-percentiles!")
-    print(os.getcwd())
     today = str(datetime.today().date())
     yesterday_str = str(datetime.today().date() - timedelta(days=1))
     print(today)
-    # today = '2026-03-09'
-
-    sites = get_usgs_gage_metadata(today)
+    
+    activate_usgs_api_key()
+    sites = get_usgs_gage_metadata()
     sites = sites.iloc[:]
-    flow_data = get_flow_data_time_series(sites, today)
-    sites, flow_data = remove_empty_df(sites, flow_data)
+    flow_data = get_flow_data_time_series(sites.monitoring_location_id, today)
         
     for day in [1, 7, 14, 28]:
         recent_dvs = get_recent_values(flow_data, today, day)
         flow_data_nday = get_rolling_avg_flow_data(flow_data, day)
 
-        percentiles = get_percentiles(sites, flow_data_nday, today)
+        percentiles = get_percentiles(flow_data_nday, today)
         percentile_year_count = get_years_used_for_percentile_calcs(percentiles)
         df = interpolate_percentile_of_recent_values(recent_dvs, percentiles)
 
         df_gage = prep_for_plotting(df, sites, percentile_year_count)
-        m = create_gage_condition_map(df_gage, '00060_Mean', 'NWD', 'Current Daily Mean')
+        m = create_gage_condition_map(df_gage, 'daily', 'value', 'NWD', 'Current Daily Mean')
         add_map_title(f'{day}-Day Streamflow Percentiles {yesterday_str}', m)
         m.save(os.path.join(path_maps, f'streamflow-percentiles-{day:02d}day.html'))        
-
-    # update_index_file(yesterday_str)
 
 if __name__ == "__main__":
     main()

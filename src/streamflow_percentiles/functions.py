@@ -2,25 +2,29 @@
 import os
 import glob
 from datetime import datetime, timedelta
-from dataretrieval import nwis
+from dataretrieval import waterdata, nwis
 import pandas as pd
-from .helper_fxns import qaqc_usgs_data
 import hyswap
+from .helper_fxns import qaqc_usgs_data, chunk_data
 
-# print(os.getcwd())
 path_data = r'data\daily'
 if not os.path.isdir(path_data):
     os.makedirs(path_data)
 
-with open(r'usgs_api_key.txt', 'r') as f:
-    api_key = f.readline()
-    os.environ["API_USGS_PAT"] = api_key
-    
+def activate_usgs_api_key():
+    # register for key: https://api.waterdata.usgs.gov/signup/
+    try:
+        with open(r'usgs_api_key.txt', 'r') as f:
+            api_key = f.readline()
+            os.environ["API_USGS_PAT"] = api_key
+            print('USGS API key found successfully')
+    except:
+        print("Code being run without a USGS API key")
 
-def get_usgs_gage_metadata(today):
+def get_usgs_gage_metadata_nwis(today):
     
     state = 'MO'
-    # Query NWIS for what streamgage sites were active within the last week
+    # Query NWIS for what streamgage sites were active within this year
     sites, _ = nwis.what_sites(
         stateCd=state, 
         parameterCd=['00060'], 
@@ -30,24 +34,84 @@ def get_usgs_gage_metadata(today):
     
     return sites
 
+def get_usgs_gage_metadata(state_name='Missouri', pcode='00060'):
+    '''
+    With the switch from nwis to waterdata, this is now a two step process. 
+    The first call is to waterdata.get_time_series_metadata() 
+    The location ids from that call are used as input to waterdata.get_monitoring_locations() which has more metadata about the site
 
-def get_usgs_daily_api(site_no, start='1850-01-01', end=None, pcode='00060'):
+    Output: 
+        df with metadata about the site. data columns are defined by properties list
+        Note that column names are different from the NWIS API
+    '''
+    
+    # Query Water Data APIs for what monitoring locations were active within the last week
+    active_time_series, _ = waterdata.get_time_series_metadata(
+        state_name=state_name,
+        parameter_code=pcode,
+        statistic_id='00003', #daily mean
+        end_utc='P1W',
+        skip_geometry=True,
+        )
+
+    site_ids = active_time_series['monitoring_location_id'].unique().tolist()
+    properties = [
+        'monitoring_location_id', 
+        'agency_code', 
+        'monitoring_location_name', 
+        'county_name',
+        'drainage_area', 
+        'site_type', 
+        'hydrologic_unit_code', 
+        'altitude', 
+        'vertical_datum', 
+        'original_horizontal_datum'
+    ]
+    
+    active_stream_gages = pd.DataFrame()
+    for chunk_ids in chunk_data(site_ids, 200):
+        df, _ = waterdata.get_monitoring_locations(
+            monitoring_location_id=chunk_ids,
+            properties=properties,
+            # site_type_code='ST',
+        )
         
-    df = nwis.get_record(
-            sites=site_no, 
-            parameterCd=pcode, 
-            start=start, 
-            end=end, 
-            service='dv'
-        ).drop('site_no', axis=1) # don't need to save the extra data if it's in the file name. Can add back later if needed. 
+        active_stream_gages = pd.concat([active_stream_gages, df])
+    
+    return active_stream_gages
+
+   
+def get_usgs_daily_api(site_id, start='1850-01-01', pcode='00060'):
+    
+    properties = [
+        'time', 
+        'value', 
+        'approval_status', 
+        'qualifier',
+        'monitoring_location_id',
+        # 'parameter_code', 
+        # 'statistic_id'
+        # unit_of_measure
+        ]
+    
+    df, _ = waterdata.get_daily(
+        monitoring_location_id=site_id,
+        parameter_code=pcode,
+        statistic_id='00003', # mean daily discharge
+        time='/'.join([start, '..']),
+        skip_geometry=True,
+        properties=properties,
+       )
+    df.set_index('time', inplace=True)
 
     return df
 
 
 def load_local_data(fn):
-    return pd.read_csv(fn, index_col='datetime', parse_dates=['datetime'])
+    return pd.read_csv(fn, parse_dates=['time']).set_index('time')
 
-def update_local_data(fn_local, fn_today, site_no, today):
+
+def update_local_data(fn_local, fn_today, site_id, today):
     '''
     Update local data if gage data already exists and adding recent data to it. 
         Loads local data as df
@@ -60,16 +124,12 @@ def update_local_data(fn_local, fn_today, site_no, today):
     
     df_local = load_local_data(fn_local)
     
-    if df_local.empty: # this shouldn't happen again in the future bc of checks in get_flow_data_time_series
-        return df_local
-    
-    # last_local_date = fn_site.split('_')[-1].strip('.csv')
     last_local_date = df_local.index[-1].replace(tzinfo=None)
     
     if last_local_date < datetime.strptime(today, '%Y-%m-%d'):
         
         query_start_date_str = str((last_local_date + timedelta(days=1)).date())
-        df_new = get_usgs_daily_api(site_no, start=query_start_date_str)     ## add end = yesterday to get rid of potential date mixup       
+        df_new = get_usgs_daily_api(site_id, start=query_start_date_str)     ## add end = yesterday to get rid of potential date mixup?       
 
         df = pd.concat([df_local, df_new])
         os.remove(fn_local)
@@ -81,101 +141,86 @@ def update_local_data(fn_local, fn_today, site_no, today):
     return df
 
 
-
-def get_flow_data_time_series(sites: pd.DataFrame, today) -> dict[str, pd.DataFrame]:
+def get_flow_data_time_series(site_ids, today) -> dict[str, pd.DataFrame]:
     '''
-    sites: df is output of nwis.what_sites()
-
-    output: dictionary keys is string site number with df time series of all daily data for the site
-
-    first run will download all data from USGS API and save locally. 
-    subsequent runs will check for local data and  request only new data from USGS API if needed. 
+    Load dict of dfs with updated daily data time series.
+    The first run will download all data from USGS API and save locally. 
+    Subsequent runs will check for missing local data and will either
+        1. request only new data from USGS API if needed 
+        2. load local data with most recent data
+    
+    Input: 
+        site_ids: iterable of strings of gage site ids. Used in file name and as output dict keys. 
+        today: date as str for last data update
+    
+    Output: 
+        Dict key: site number [str]
+        Dict values: df time series of all daily data for the site
     '''
 
     flow_data = {}
+    len_sites = len(site_ids)
+        
+    for i, site_id in enumerate(site_ids):
     
-    # path_data = r'..\data\daily'
-    
-    for site_no in sites['site_no'].iloc[:]:
-    
-        fn_today = os.path.join(path_data, site_no + f'_{today}.csv')
-        glob_site = glob.glob(os.path.join(path_data, site_no + '*csv'))
+        fn_today = os.path.join(path_data, site_id + f'_{today}.csv')
+        glob_site = glob.glob(os.path.join(path_data, site_id + '*csv'))
 
-        print(fn_today, end=' - ')
+        print(fn_today, f'- {1+i:03}/{len_sites}', end=' - ')
     
-        ## Check if gage & today's date exist
+        ## Check if gage & today's date exist locally
         if os.path.isfile(fn_today):
-            print('1')
+            print('Loading Local Data')
             df = load_local_data(fn_today)
-            # flow_data[site_no] = df
-            # continue
             
-        ## Check if gage but not today's date exist. If so, only update data. Don't redownload the whole thing. 
+        ## Check if find gage but not today's date. If so, only update data. Don't redownload the whole thing. 
         elif len(glob_site) > 0:
-            print('2')
+            print('Appending recent USGS API Data to Local Data')
             fn_local = glob_site[-1]
-            df = update_local_data(fn_local, fn_today, site_no, today)
+            df = update_local_data(fn_local, fn_today, site_id, today)
             
         else:
-            print('3')
-            df = get_usgs_daily_api(site_no, end=today)
+            print('Downloading all data from USGS API')
+            df = get_usgs_daily_api(site_id)
             if not df.empty:
                 df.to_csv(fn_today)
 
-        # flow_data[site_no] = qaqc_usgs_data(df, '00060_Mean') # breaks with an empty. WHen do I need to do qaqc?
         if not df.empty:
-            flow_data[site_no] = df
-
-        
+            flow_data[site_id] = df
+ 
     return flow_data
 
 
-
-#%% Hack to load data without making a call to nwis.what_sites to get the gages
-
-def get_sites_local():
-    path_data = r'..\data\daily'
-    sites_lst = []
-    for fn in os.listdir(path_data):
-        if '.csv' in fn:
-            sites_lst.append(fn.split('_')[0])
-    return sites_lst
-
-
-def get_recent_values(flow_data, today, day=1) -> pd.DataFrame:
+def get_recent_values(flow_data, today, day=1, col='value') -> pd.DataFrame:
     '''
     Get last n days worth of data to use as "current". Get rolling average
 
-    today = str of day data were collected. So typically last day of data should be from "yesterday"
-    
-    day = 1, 7, 14, or 24
+    Input: 
+        flow_data: 
+        today = str of day data were collected. So typically last day of data should be from "yesterday"
+        day = 1, 7, 14, or 24
+        col = column of data frame to do data processing on
 
-    returns df with single, {day}-day averaged value for each gage. 
+    Output: 
+        df with single, {day}-day averaged value for each gage
     '''
 
-    assert day in [1, 7, 14, 28], 'Only for 1, 7, 14, or 28 day averages'    
-
-    
-    stop = yesterday = datetime.strptime(today, '%Y-%m-%d') - timedelta(1)
+    yesterday = datetime.strptime(today, '%Y-%m-%d') - timedelta(1)
     start = yesterday
     if day > 1:
-        start = yesterday - timedelta(day-1) #-1 bc both ends are inclusive in date index
+        start = yesterday - timedelta(day-1) # day-1 bc both ends are inclusive in date index
 
     recent_dvs = pd.DataFrame()
-    for site_no, df in flow_data.items():
+    for site_id, df in flow_data.items():
 
-        df = qaqc_usgs_data(df, '00060_Mean')
-            
+        df = qaqc_usgs_data(df, col)
+        
         if not df.empty:  
-            df['site_no'] = site_no
             df_rolled = hyswap.utils.rolling_average(
                 # df.iloc[-day:],   # initial method
                 df.loc[str(start):str(yesterday)],  #use dates explicitly in case last date not consistent (this has happened) 
-                '00060_Mean', 
-                f'{day}D').dropna()  
+                col, 
+                f'{day}D').dropna(subset=col)  
             recent_dvs = pd.concat([recent_dvs, df_rolled], axis=0)
-    
-    recent_dvs.set_index('site_no', append=True, inplace=True) # adding it back into the df
-    recent_dvs.swaplevel('site_no', 'datetime')  # trouble shooting formatting only
     
     return recent_dvs
