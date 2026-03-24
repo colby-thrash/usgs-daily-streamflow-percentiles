@@ -4,8 +4,8 @@ import glob
 from datetime import datetime, timedelta
 from dataretrieval import waterdata, nwis
 import pandas as pd
-from .helper_fxns import qaqc_usgs_data, chunk_data
 import hyswap
+from .helper_fxns import qaqc_usgs_data, chunk_data
 
 path_data = r'data\daily'
 if not os.path.isdir(path_data):
@@ -108,10 +108,10 @@ def get_usgs_daily_api(site_id, start='1850-01-01', pcode='00060'):
 
 
 def load_local_data(fn):
-    return pd.read_csv(fn, parse_dates=['time']).set_index('time', drop=False)
+    return pd.read_csv(fn, parse_dates=['time']).set_index('time')
 
 
-def update_local_data(fn_local, fn_today, site_no, today):
+def update_local_data(fn_local, fn_today, site_id, today):
     '''
     Update local data if gage data already exists and adding recent data to it. 
         Loads local data as df
@@ -129,7 +129,7 @@ def update_local_data(fn_local, fn_today, site_no, today):
     if last_local_date < datetime.strptime(today, '%Y-%m-%d'):
         
         query_start_date_str = str((last_local_date + timedelta(days=1)).date())
-        df_new = get_usgs_daily_api('USGS-'+site_no, start=query_start_date_str)     ## add end = yesterday to get rid of potential date mixup?       
+        df_new = get_usgs_daily_api(site_id, start=query_start_date_str)     ## add end = yesterday to get rid of potential date mixup?       
 
         df = pd.concat([df_local, df_new])
         os.remove(fn_local)
@@ -141,24 +141,32 @@ def update_local_data(fn_local, fn_today, site_no, today):
     return df
 
 
-def get_flow_data_time_series(site_nos: [pd.Series | list], today: str) -> dict[str, pd.DataFrame]:
+def get_flow_data_time_series(site_ids, today) -> dict[str, pd.DataFrame]:
     '''
-    site_nos: iterable of strings of gage site numbers. Used in file name and as output dict keys. 
-
-    output: dictionary keys is string site number with df time series of all daily data for the site
-
-    first run will download all data from USGS API and save locally. 
-    subsequent runs will check for local data and  request only new data from USGS API if needed. 
+    Load dict of dfs with updated daily data time series.
+    The first run will download all data from USGS API and save locally. 
+    Subsequent runs will check for missing local data and will either
+        1. request only new data from USGS API if needed 
+        2. load local data with most recent data
+    
+    Input: 
+        site_ids: iterable of strings of gage site ids. Used in file name and as output dict keys. 
+        today: date as str for last data update
+    
+    Output: 
+        Dict key: site number [str]
+        Dict values: df time series of all daily data for the site
     '''
 
     flow_data = {}
+    len_sites = len(site_ids)
         
-    for site_no in site_nos:
+    for i, site_id in enumerate(site_ids):
     
-        fn_today = os.path.join(path_data, site_no + f'_{today}.csv')
-        glob_site = glob.glob(os.path.join(path_data, site_no + '*csv'))
+        fn_today = os.path.join(path_data, site_id + f'_{today}.csv')
+        glob_site = glob.glob(os.path.join(path_data, site_id + '*csv'))
 
-        print(fn_today, end=' - ')
+        print(fn_today, f'- {1+i:03}/{len_sites}', end=' - ')
     
         ## Check if gage & today's date exist locally
         if os.path.isfile(fn_today):
@@ -169,16 +177,16 @@ def get_flow_data_time_series(site_nos: [pd.Series | list], today: str) -> dict[
         elif len(glob_site) > 0:
             print('Appending recent USGS API Data to Local Data')
             fn_local = glob_site[-1]
-            df = update_local_data(fn_local, fn_today, site_no, today)
+            df = update_local_data(fn_local, fn_today, site_id, today)
             
         else:
-            print('Download all data from USGS API')
-            df = get_usgs_daily_api('USGS-'+site_no)
+            print('Downloading all data from USGS API')
+            df = get_usgs_daily_api(site_id)
             if not df.empty:
                 df.to_csv(fn_today)
 
         if not df.empty:
-            flow_data[site_no] = df
+            flow_data[site_id] = df
  
     return flow_data
 
@@ -203,12 +211,11 @@ def get_recent_values(flow_data, today, day=1, col='value') -> pd.DataFrame:
         start = yesterday - timedelta(day-1) # day-1 bc both ends are inclusive in date index
 
     recent_dvs = pd.DataFrame()
-    for site_no, df in flow_data.items():
+    for site_id, df in flow_data.items():
 
         df = qaqc_usgs_data(df, col)
         
         if not df.empty:  
-            df['site_no'] = site_no
             df_rolled = hyswap.utils.rolling_average(
                 # df.iloc[-day:],   # initial method
                 df.loc[str(start):str(yesterday)],  #use dates explicitly in case last date not consistent (this has happened) 

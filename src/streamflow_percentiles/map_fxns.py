@@ -11,19 +11,23 @@ def prep_for_plotting(df, sites, percentile_year_count):
     df = hyswap.utils.categorize_flows(df, 'est_pct', schema_name="NWD")
     
     # Prep Data for mapping by joining site information and flow data`
-    gage_df = pd.merge(sites, df, how="right", on="monitoring_location_id")
+    gage_df = pd.merge(sites, df.reset_index(), how="right", on="monitoring_location_id")
     
     # Add year count to gage_df
-    gage_df.set_index('site_no', inplace=True)
+    gage_df.set_index('monitoring_location_id', inplace=True)
     gage_df['record_length_yr'] = pd.Series(percentile_year_count)
     gage_df.reset_index(inplace=True)
 
     return gage_df
 
-def add_counties_to_map(m):
+def load_counties_shapefile():
     path = r"C:\Users\nrthrac\Desktop\working\MWSS\python-gis\gis-data\MO_2014_County_Boundaries_shp"
     crs = 4326
-    mo = gpd.read_file(path).to_crs(crs) #"EPSG:5070")
+    return gpd.read_file(path).to_crs(crs) #"EPSG:5070")
+
+def add_counties_to_map(m):
+    
+    mo = load_counties_shapefile()
 
     alpha = 0.5
     wt = 1.5
