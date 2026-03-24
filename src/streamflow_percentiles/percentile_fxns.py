@@ -4,15 +4,29 @@ import hyswap
 import pandas as pd
 
 
-def get_percentil_levels():
-    # Define what percentile levels (thresholds) that we want to calculate.
-    # Intervals of 5 or less are recommended to have sufficient levels to interpolate between in later calculations.
-    # Note that 0 and 100 percentile levels are ignored, refer to min and max values returned instead.
+def get_percentile_levels():
+    '''
+    Define what percentile levels (thresholds) to use for calculations
+    Intervals of 5 or less are recommended to have sufficient levels to interpolate between in later calculations.
+    Note that 0 and 100 percentile levels are ignored, refer to min and max values returned instead.
+    
+    Output:
+        np.array of percentile levels for future percentile calculations 
+    '''
     percentile_levels = np.concatenate((np.array([1]), np.arange(5,96,5), np.array([99])), axis=0)
     return percentile_levels
 
 
-def get_rolling_avg_flow_data(flow_data, day, col='value'):
+def get_rolling_avg_flow_data(flow_data: dict[str, pd.DataFrame], day: int, col: str='value') -> dict[str, pd.DataFrame]:
+    '''
+    Input: 
+        Dict of dfs with time sries of daily streamflow data
+        dfs are output from fxn get_flow_data_time_series() using the USGS daily data API
+
+    Output:
+        Dict of dfs of the same shape as the input with 'day'-day rolling averages applied
+    '''
+    
     flow_data_nday = {}
     for site_no, df in flow_data.items():
         if not df.empty:
@@ -20,43 +34,45 @@ def get_rolling_avg_flow_data(flow_data, day, col='value'):
     return flow_data_nday
 
 
-## THIS IS THE FUNCTION THAT GREATLY REDUCES THE TIME IN THE SLOW PART OF THE CODE
 def calculate_single_day_percentile_thresholds(df, today, percentile_levels, col='value') -> pd.DataFrame:
     '''
-    input is [df time series of all data for single gage, value want percentile for, date as str for last data update]
+    Calculate data values for percentiles defined by percentile_levels
+    Tutorial did calculations for every day of the year, this code only calculates for the single date of interest
 
-    Returns df of thresholds. The thresholds (percentile_levels) and percentile values are tied together.
+    Input: 
+        df: time series of all data for single gage
+        today: date as str for last data update
+        percentile_levels: np.array of percentile values from 0-100 
+        col: column of df for percentile calculation
+
+    Output:
+        df of percentiles with date (mm-dd) as index and percentile_level as columns
     '''
     
-    # yesterday_md = str(datetime.today().date() - timedelta(days=1))[-5:]
     yesterday_md = str(datetime.strptime(today, '%Y-%m-%d').date() - timedelta(1))[-5:]
-    
     s_doy = hyswap.filter_data_by_month_day(df, yesterday_md, col)
-    # display(s_doy)
-    
     ptile_thresholds = hyswap.calculate_fixed_percentile_thresholds(s_doy, percentiles=percentile_levels)
-    # ptile_thresholds.index = list(yesterday_md)
-    # display(ptile_thresholds)            
-    
-    # ptile = hyswap.calculate_fixed_percentile_from_value(value, ptile_thresholds)
-    # print(f"{value}: {ptile}%, n={ptile_thresholds["count"].values}")
 
     return ptile_thresholds
 
 
-## calculate percentiles of n day rolling avreaged time series data   
-
-def get_percentiles(sites, flow_data, today, col='value', filt_col='approval_status') -> dict[str, pd.DataFrame]:
+def get_percentiles(flow_data, today, col='value', filt_col='approval_status') -> dict[str, pd.DataFrame]:
     '''
-    flow_data = dict[site_no: df.nday]
+    Calculate percentiles of n-day rolling averaged time series data.
 
-    output = Dict
-          key: site_no
-          value: pd.DataFrame of percentiles for single day
+    Input: 
+        flow_data = dict of dfs with time series of n-day rolling averaged 
+        today: date string 'YYYY-MM-DD' for day of calculation
+        col = column of df to do percentile calculations
+        filt_col = column of df to use as filter for approved data
+
+    Output: Dict
+        key: site_no
+        value: pd.DataFrame of percentiles for date `today`
     '''
 
     percentile_thresholds = {}
-    # for site_no in sites['site_no']:
+
     for site_no in flow_data:
     
         if flow_data[site_no].empty:
@@ -65,6 +81,8 @@ def get_percentiles(sites, flow_data, today, col='value', filt_col='approval_sta
             
         if (flow_data[site_no].index[-1] - flow_data[site_no].index[0]) / timedelta(days=365) < 30: 
             print(f'{site_no} does not have 30 years of data')
+            ## TODO: Update to use year count from get_years_used_for_percentile_calcs() instead. 
+            ## TODO: What else needs to be done to display gages without 30 yrs
             continue
         
         if col in flow_data[site_no].columns:
@@ -72,8 +90,8 @@ def get_percentiles(sites, flow_data, today, col='value', filt_col='approval_sta
             # Filter data as only approved data in NWIS should be used to calculate statistics
             df = hyswap.utils.filter_approved_data(flow_data[site_no], filt_col)
 
-            ## New method to only calculate for the current day of year of interest
-            percentile_thresholds[site_no] = calculate_single_day_percentile_thresholds(df, today, get_percentil_levels())        
+            # Method to only calculate for the current day of year of interest
+            percentile_thresholds[site_no] = calculate_single_day_percentile_thresholds(df, today, get_percentile_levels())        
             
         else:
             print('No standard discharge data column found for site ' + site_no + ', skipping')
@@ -81,16 +99,22 @@ def get_percentiles(sites, flow_data, today, col='value', filt_col='approval_sta
     return percentile_thresholds
 
 
+def interpolate_percentile_of_recent_values(recent_dvs: pd.DataFrame, percentile_values, col='value') -> pd.DataFrame:
+    '''
+    Uses percentile values calculated from the entire dataset to interpolate the estimated percentile value for a new value
 
-## Use percentile thresholds to interpolate the percentile value for the new value. 
+    Input: 
+        recent_dvs: df with single value for each 
+        percentile_values: 
+        col = column of df to do percentile calculations
 
-def interpolate_percentile_of_recent_values(recent_dvs: pd.DataFrame, percentile_values, col='value'):
-    
+    Output: 
+        returns recent_dvs with null data removed and the addition of column 'est_pct'
+    '''
 
     df = pd.DataFrame()
-    # for site_no, site_df in recent_dvs.groupby(level="site_no", group_keys=True):  
+
     for site_no, site_df in recent_dvs.groupby('site_no'):
-        # print(f'{site_no} {len(site_df)}')
         if site_no not in list(percentile_values.keys()):
             # print(f'{site_no} not in percentile_values')
             ## TODO: need to add this somehow into the dataframe so I can plot the gages with less than 30 yrs of data?
@@ -98,11 +122,9 @@ def interpolate_percentile_of_recent_values(recent_dvs: pd.DataFrame, percentile
         elif percentile_values[site_no].isnull().all().all():
             # print(f'{site_no} all values Null')
             continue
-        # percentiles = hyswap.percentiles.calculate_multiple_variable_percentiles_from_values(
-        #     site_df,'00060_Mean', percentile_values[site_no])
         
         if site_df[col].isna().values[-1]:
-            # print(f'{site_no} past_dvs_nd is Nan')
+            # print(f'{site_no} recent_dvs is Nan')
             continue 
             
         percentile = hyswap.percentiles.calculate_fixed_percentile_from_value(
@@ -115,7 +137,19 @@ def interpolate_percentile_of_recent_values(recent_dvs: pd.DataFrame, percentile
 
 
 def get_years_used_for_percentile_calcs(percentile_values) -> dict[str, int]:
+    '''
+    Determine how many years of data were used for percentile calculation
+
+    Input: 
+        percentile_values: dict of dfs with percentile data. df is from hyswap.calculate_single_day_percentile_thresholds() called in get_percentiles()
+
+    Output: Dict
+        key: site_no
+        value: int of years used in percentile calculatin
+    '''
+
     percentile_year_count = {}
     for site_no in percentile_values.keys():
-        percentile_year_count[site_no] = percentile_values[site_no]['count'].max()
+        assert len(percentile_values[site_no]) == 1 # added bc index below used to be max(). I don't know if that might break at some point?
+        percentile_year_count[site_no] = percentile_values[site_no]['count'].values[0]
     return percentile_year_count

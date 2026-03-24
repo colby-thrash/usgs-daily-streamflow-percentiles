@@ -38,7 +38,7 @@ def main():
         recent_dvs = get_recent_values(flow_data, today, day)
         flow_data_nday = get_rolling_avg_flow_data(flow_data, day)
 
-        percentiles = get_percentiles(sites, flow_data_nday, today)
+        percentiles = get_percentiles(flow_data_nday, today)
         percentile_year_count = get_years_used_for_percentile_calcs(percentiles)
         df = interpolate_percentile_of_recent_values(recent_dvs, percentiles)
 
