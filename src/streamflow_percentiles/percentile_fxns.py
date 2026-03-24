@@ -79,11 +79,11 @@ def get_percentiles(flow_data, today, col='value', filt_col='approval_status') -
             print(f'{site_id} does not have daily data')
             continue
             
-        if (flow_data[site_id].index[-1] - flow_data[site_id].index[0]) / timedelta(days=365) < 30: 
-            print(f'{site_id} does not have 30 years of data')
-            ## TODO: Update to use year count from get_years_used_for_percentile_calcs() instead. 
-            ## TODO: What else needs to be done to display gages without 30 yrs
-            continue
+        # if (flow_data[site_id].index[-1] - flow_data[site_id].index[0]) / timedelta(days=365) < 30: 
+        #     print(f'{site_id} does not have 30 years of data')
+        #     ## TODO: Update to use year count from get_years_used_for_percentile_calcs() instead. 
+        #     ## TODO: What else needs to be done to display gages without 30 yrs
+        #     continue
         
         if col in flow_data[site_id].columns:
             print(f'{site_id} precentile calculated')
@@ -123,7 +123,6 @@ def interpolate_percentile_of_recent_values(
     for site_id, site_df in recent_dvs.groupby(grp_col):
         if site_id not in list(percentile_values.keys()):
             # print(f'{site_id} not in percentile_values')
-            ## TODO: need to add this somehow into the dataframe so I can plot the gages with less than 30 yrs of data?
             continue
         elif percentile_values[site_id].isnull().all().all():
             # print(f'{site_id} all values Null')
@@ -132,9 +131,12 @@ def interpolate_percentile_of_recent_values(
         if site_df[col].isna().values[-1]:
             # print(f'{site_id} recent_dvs is Nan')
             continue 
-            
-        percentile = hyswap.percentiles.calculate_fixed_percentile_from_value(
-            site_df[col], percentile_values[site_id])
+        
+        if percentile_values[site_id]['count'].values[0] < 30: # if less than 30 yrs of data
+            percentile = np.nan
+        else:
+            percentile = hyswap.percentiles.calculate_fixed_percentile_from_value(
+                site_df[col], percentile_values[site_id])
     
         site_df['est_pct'] = percentile                
         df = pd.concat([df, site_df])
