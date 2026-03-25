@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 import numpy as np
 import hyswap
 import pandas as pd
+from .helper_fxns import qaqc_usgs_data
 
 
 def get_percentile_levels():
@@ -29,6 +30,7 @@ def get_rolling_avg_flow_data(flow_data: dict[str, pd.DataFrame], day: int, col:
     
     flow_data_nday = {}
     for site_id, df in flow_data.items():
+        df = qaqc_usgs_data(df, col)
         if not df.empty:
             flow_data_nday[site_id] = hyswap.utils.rolling_average(df, col, f'{day}D').round(2)
     return flow_data_nday
