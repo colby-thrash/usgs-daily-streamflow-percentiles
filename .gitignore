@@ -14,4 +14,5 @@ src/.ipynb_checkpoints
 notes/
 usgs_api_key.txt
 data/*
-!data/.gitkeep
+!data/daily
+!data/gis
