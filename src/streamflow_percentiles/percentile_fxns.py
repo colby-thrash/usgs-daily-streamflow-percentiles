@@ -79,14 +79,14 @@ def get_percentiles(flow_data, today, col='value', filt_col='approval_status') -
             print(f'{site_id} does not have daily data')
             continue
             
+        ## Commented out to get every gage with data into the percentile_thresholds output. 
+        ## < 30 yrs is now handled in interpolate_percentile_of_recent_values()
         # if (flow_data[site_id].index[-1] - flow_data[site_id].index[0]) / timedelta(days=365) < 30: 
         #     print(f'{site_id} does not have 30 years of data')
-        #     ## TODO: Update to use year count from get_years_used_for_percentile_calcs() instead. 
-        #     ## TODO: What else needs to be done to display gages without 30 yrs
         #     continue
         
         if col in flow_data[site_id].columns:
-            print(f'{site_id} precentile calculated')
+            # print(f'{site_id} precentile calculated')
             # Filter data as only approved data in NWIS should be used to calculate statistics
             df = hyswap.utils.filter_approved_data(flow_data[site_id], filt_col)
 
@@ -158,6 +158,5 @@ def get_years_used_for_percentile_calcs(percentile_values) -> dict[str, int]:
 
     percentile_year_count = {}
     for site_id in percentile_values:
-        assert len(percentile_values[site_id]) == 1 # added bc index below used to be max(). I don't know if that might break at some point?
         percentile_year_count[site_id] = percentile_values[site_id]['count'].values[0]
     return percentile_year_count

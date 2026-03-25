@@ -24,20 +24,21 @@ path_maps = r'content\html-maps'
 
 def main():
     print("Hello from streamflow-percentiles!")
-    today = str(datetime.today().date())
+    today_str = str(datetime.today().date())
     yesterday_str = str(datetime.today().date() - timedelta(days=1))
-    print(today)
+    print(today_str)
     
     activate_usgs_api_key()
     sites = get_usgs_gage_metadata()
     sites = sites.iloc[:]
-    flow_data = get_flow_data_time_series(sites.monitoring_location_id, today)
+    flow_data = get_flow_data_time_series(sites.monitoring_location_id, today_str)
         
     for day in [1, 7, 14, 28]:
-        recent_dvs = get_recent_values(flow_data, today, day)
+        print(f"Calculating {day}-day Percentiles")
+        recent_dvs = get_recent_values(flow_data, today_str, day)
         flow_data_nday = get_rolling_avg_flow_data(flow_data, day)
 
-        percentiles = get_percentiles(flow_data_nday, today)
+        percentiles = get_percentiles(flow_data_nday, today_str)
         percentile_year_count = get_years_used_for_percentile_calcs(percentiles)
         df = interpolate_percentile_of_recent_values(recent_dvs, percentiles)
 
