@@ -14,15 +14,15 @@ Streamflow data is downloaded and processed utilizing USGS Python packages `data
 
 
 
-#### Webpage
+### Webpage
 
 The maps are currently viewable on the Github Page associated with this repository at this link [https://colby-thrash.github.io/usgs-daily-streamflow-percentiles/](https://colby-thrash.github.io/usgs-daily-streamflow-percentiles/). The markdown file `index.md` is what is displayed at the link. 
 
 
 
-### Getting Started
+## Getting Started
 
-#### Setup 
+### Setup 
 
 The repository was created using `uv` and setup instructions below utilize `uv` to download dependencies from the `pyproject.toml` file and run the project locally. 
 
@@ -48,7 +48,7 @@ Learn more about `uv` [here]([Installation | uv](https://docs.astral.sh/uv/getti
 
 
 
-#### **API Key**
+### **API Key**
 
 Note that calls to the USGS APIs will be limited without an API key. The rate limit *with* a key is 1,000 requests per hour.
 
@@ -58,7 +58,7 @@ Once you get it, save the API key locally in a text file named `usgs_api_key.txt
 
 
 
-#### Usage
+### Usage
 
 Run the code with `uv`:
 
