@@ -9,14 +9,18 @@ Streamflow data is downloaded and processed utilizing USGS Python packages `data
 * All available daily streamflow data is downloaded locally using USGS APIs
   * Data is saved locally and future calls will append to and/or load local data
 * Daily streamflow data is used to calculate specified percentiles on approved data with n-day rolling averages 
-* An estimated percentile for the most recent value (provisional) is interpolated from the calculated percentiles
-* Data are displayed on interactive maps created with `folium` and saved as `.html` files.    
+* An estimated percentile for the most recent daily value (provisional) is interpolated from the calculated percentiles
+  * Note that the most recent values for each gage may not be for the same day. Daily values can have a delay in reporting.
+
+* Data are displayed on interactive maps created with `folium` and saved as `.html` files    
+  * Scroll over points to see additional information, including the date of the most recent daily data 
+
 
 
 
 ### Webpage
 
-The maps are currently viewable on the Github Page associated with this repository at this link [https://colby-thrash.github.io/usgs-daily-streamflow-percentiles/](https://colby-thrash.github.io/usgs-daily-streamflow-percentiles/). The markdown file `index.md` is what is displayed at the link. 
+The maps are currently viewable on the GitHub Page associated with this repository at this link [https://colby-thrash.github.io/usgs-daily-streamflow-percentiles/](https://colby-thrash.github.io/usgs-daily-streamflow-percentiles/). The markdown file `index.md` is what is displayed at the link. 
 
 
 
