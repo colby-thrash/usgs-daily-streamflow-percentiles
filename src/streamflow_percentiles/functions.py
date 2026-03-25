@@ -191,36 +191,25 @@ def get_flow_data_time_series(site_ids, today) -> dict[str, pd.DataFrame]:
     return flow_data
 
 
-def get_recent_values(flow_data, today, day=1, col='value') -> pd.DataFrame:
+def get_recent_values(flow_data, yesterday_str, col='value') -> pd.DataFrame:
     '''
-    Get last n days worth of data to use as "current". Get rolling average
+    Get most recent time series value on or before yesterday and return as df. 
 
     Input: 
-        flow_data: 
-        today = str of day data were collected. So typically last day of data should be from "yesterday"
-        day = 1, 7, 14, or 24
-        col = column of data frame to do data processing on
+        flow_data: dict of n-day rolling averaged dfs with site_id str as keys
+        yesterday_str = str of yesterdays data
+        col = column of df to get recent values
 
     Output: 
-        df with single, {day}-day averaged value for each gage
+        df with single n-day averaged value for each gage without NaN recent
     '''
 
-    yesterday = datetime.strptime(today, '%Y-%m-%d') - timedelta(1)
-    start = yesterday
-    if day > 1:
-        start = yesterday - timedelta(day-1) # day-1 bc both ends are inclusive in date index
-
-    recent_dvs = pd.DataFrame()
+    last_day_list = []
     for site_id, df in flow_data.items():
-
-        df = qaqc_usgs_data(df, col)
-        
         if not df.empty:  
-            df_rolled = hyswap.utils.rolling_average(
-                # df.iloc[-day:],   # initial method
-                df.loc[str(start):str(yesterday)],  #use dates explicitly in case last date not consistent (this has happened) 
-                col, 
-                f'{day}D').dropna(subset=col)  
-            recent_dvs = pd.concat([recent_dvs, df_rolled], axis=0)
+            last_day_list.append(df[:yesterday_str].iloc[-1])
+
+    recent_dvs = pd.DataFrame(last_day_list).dropna(subset=col)
+    recent_dvs.index.name = df.index.name  # explicitely assing index name bc it doesn't carry through pd.Series appending 
     
     return recent_dvs

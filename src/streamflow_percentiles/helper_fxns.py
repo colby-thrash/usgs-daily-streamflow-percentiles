@@ -12,14 +12,3 @@ def qaqc_usgs_data(df, data_column_name):
 def chunk_data(data, size):
     for i in range(0, len(data), size):
         yield data[i: i+size]
-
-def remove_empty_df(sites, flow_data: dict):
-
-    flow_data_trimmed = {}
-    for site_no, df in flow_data.items():
-        if df.empty:
-            sites = sites[sites.site_no != site_no]
-            continue
-        flow_data_trimmed[site_no] = df
-        
-    return sites, flow_data_trimmed

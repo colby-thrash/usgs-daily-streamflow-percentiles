@@ -31,12 +31,13 @@ def main():
     activate_usgs_api_key()
     sites = get_usgs_gage_metadata()
     sites = sites.iloc[:]
-    flow_data = get_flow_data_time_series(sites.monitoring_location_id, today_str)
+    sites_id = sites.monitoring_location_id 
+    flow_data = get_flow_data_time_series(sites_id, today_str)
         
     for day in [1, 7, 14, 28]:
         print(f"Calculating {day}-day Percentiles")
-        recent_dvs = get_recent_values(flow_data, today_str, day)
         flow_data_nday = get_rolling_avg_flow_data(flow_data, day)
+        recent_dvs = get_recent_values(flow_data_nday, yesterday_str)
 
         percentiles = get_percentiles(flow_data_nday, today_str)
         percentile_year_count = get_years_used_for_percentile_calcs(percentiles)
