@@ -93,11 +93,12 @@ def create_gage_condition_map(gage_df, flow_data_type, flow_data_col, map_schema
                 flow_cond_cmap = flow_cond_cmap + ['#e3e0ca'] # light taupe
         # set NA values to "Not Ranked" category
         gage_df['flow_cat'] = gage_df['flow_cat'].cat.add_categories('Not Ranked')
-        gage_df.loc[gage_df['est_pct'].isna(), 'flow_cat'] = 'Not Ranked'
+        filt_not_ranked = gage_df.record_length_yr < 30
+        gage_df.loc[filt_not_ranked, 'flow_cat'] = 'Not Ranked'
         flow_cond_cmap = flow_cond_cmap + ['#d3d3d3'] # light grey
         # renaming columns with user friendly names for map
         gage_df = gage_df.rename(columns={flow_data_col:'Discharge (cfs)',
-                                                'est_pct':'Estimated Percentile',
+                                                'est_pct':'Estimated Percentile (%)',
                                                 'monitoring_location_id':'USGS Gage ID',
                                                 'monitoring_location_name':'Streamgage Name',
                                                 'flow_cat':'Streamflow Category',

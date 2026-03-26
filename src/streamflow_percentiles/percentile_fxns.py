@@ -80,13 +80,7 @@ def get_percentiles(flow_data, today, col='value', filt_col='approval_status') -
         if flow_data[site_id].empty:
             print(f'{site_id} does not have daily data')
             continue
-            
-        ## Commented out to get every gage with data into the percentile_thresholds output. 
-        ## < 30 yrs is now handled in interpolate_percentile_of_recent_values()
-        # if (flow_data[site_id].index[-1] - flow_data[site_id].index[0]) / timedelta(days=365) < 30: 
-        #     print(f'{site_id} does not have 30 years of data')
-        #     continue
-        
+                    
         if col in flow_data[site_id].columns:
             # print(f'{site_id} precentile calculated')
             # Filter data as only approved data in NWIS should be used to calculate statistics
@@ -134,11 +128,8 @@ def interpolate_percentile_of_recent_values(
             # print(f'{site_id} recent_dvs is Nan')
             continue 
         
-        if percentile_values[site_id]['count'].values[0] < 30: # if less than 30 yrs of data
-            percentile = np.nan
-        else:
-            percentile = hyswap.percentiles.calculate_fixed_percentile_from_value(
-                site_df[col], percentile_values[site_id])
+        percentile = hyswap.percentiles.calculate_fixed_percentile_from_value(
+            site_df[col], percentile_values[site_id])
     
         site_df['est_pct'] = percentile                
         df = pd.concat([df, site_df])
