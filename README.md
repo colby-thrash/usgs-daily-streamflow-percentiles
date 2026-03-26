@@ -30,7 +30,7 @@ The maps are currently viewable on the GitHub Page associated with this reposito
 
 The repository was created using `uv` and setup instructions below utilize `uv` to download dependencies from the `pyproject.toml` file and run the project locally. 
 
-Learn more about `uv` [here]([Installation | uv](https://docs.astral.sh/uv/getting-started/installation/)). 
+Learn more about `uv` [here](https://docs.astral.sh/uv/getting-started/installation/). 
 
 1. Clone the repo
 
