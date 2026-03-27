@@ -18,6 +18,10 @@ def prep_for_plotting(df, sites, percentile_year_count):
     gage_df['record_length_yr'] = pd.Series(percentile_year_count)
     gage_df.reset_index(inplace=True)
 
+    # Add link to site page
+    gage_df['Sitepage Link'] = (r'<a href=https://waterdata.usgs.gov/monitoring-location/' + 
+                                gage_df.monitoring_location_id + '>' + gage_df.monitoring_location_id + '</a>')
+
     return gage_df
 
 def load_counties_shapefile():
@@ -121,9 +125,10 @@ def create_gage_condition_map(gage_df, flow_data_type, flow_data_col, map_schema
                                          "Streamgage Name", 
                                          "Streamflow Category", 
                                          "Discharge (cfs)", 
-                                         "Estimated Percentile", 
+                                         "Estimated Percentile (%)", 
                                          "Date", 
                                          "Recond Length (yr)"],
+                                popup = ['Sitepage Link'],
                                 tiles="CartoDB Positron",
                                 marker_kwds=dict(radius=5),
                                 legend_kwds=dict(caption=streamflow_data_type + '<br> Streamflow  Category'))
