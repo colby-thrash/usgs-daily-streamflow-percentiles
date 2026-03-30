@@ -1,7 +1,10 @@
-on:
-  schedule:
-    - cron: '25 8 * * *' # 8:25 AM every day
-      timezone: 'America/Chicago'
+# on:
+#   schedule:
+#     - cron: '25 8 * * *' # 8:25 AM every day
+#       timezone: 'America/Chicago'
+
+on: 
+  workflow_dispatch:
 
 jobs: 
   run_main:
