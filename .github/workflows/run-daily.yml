@@ -3,7 +3,7 @@ on:
     - cron: '25 8 * * *' # 8:25 AM every day
       timezone: 'America/Chicago'
 
-job: 
+jobs: 
   run_main:
     runs-on: windows-latest
 
