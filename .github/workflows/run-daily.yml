@@ -24,11 +24,11 @@ jobs:
       run: uv run ./src/main.py ${{ secrets.USGS_API_KEY }}
 
     - name: Git push map updates to the repo
-      run: 
+      run: |
           git config --global user.name "GitHub Actions"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
-          git add data/daily content 
+          git add content 
           git commit -m "update data and map htmls - github action" || echo "No changes to commit"
 
           git push
