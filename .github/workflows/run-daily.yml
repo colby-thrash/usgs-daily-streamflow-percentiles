@@ -21,4 +21,4 @@ jobs:
       run: uv sync
 
     - name: Run my code
-      run: uv run src/main1.py ${{ secrets.USGS_API_KEY }}
+      run: uv run ./src/main1.py ${{ secrets.USGS_API_KEY }}
