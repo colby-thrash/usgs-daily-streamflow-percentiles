@@ -1,5 +1,6 @@
 
 import os
+import sys
 import glob
 from datetime import datetime, timedelta
 from dataretrieval import waterdata, nwis
@@ -14,10 +15,17 @@ if not os.path.isdir(path_data):
 def activate_usgs_api_key():
     # register for key: https://api.waterdata.usgs.gov/signup/
     try:
-        with open(r'usgs_api_key.txt', 'r') as f:
-            api_key = f.readline()
-            os.environ["API_USGS_PAT"] = api_key
-            print('USGS API key found successfully')
+        # check for api key as input argument
+        if len(sys.argv) > 1:
+            print('FOUND ARGUMENTS!')
+            api_key = sys.argv[1]
+
+        else:
+            with open(r'usgs_api_key.txt', 'r') as f:
+                api_key = f.readline()
+        
+        os.environ["API_USGS_PAT"] = api_key
+        print('USGS API key found successfully')
     except:
         print("Code being run without a USGS API key")
 
