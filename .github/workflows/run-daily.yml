@@ -1,0 +1,24 @@
+# on:
+#   schedule:
+#     - cron: '25 8 * * *' # 8:25 AM every day
+#       timezone: 'America/Chicago'
+
+on: 
+  workflow_dispatch:
+
+jobs: 
+  run_main:
+    runs-on: windows-latest
+
+    steps: 
+    - name: Checkout code
+      uses: actions/checkout@v6
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v7
+
+    - name: Install dependencies
+      run: uv sync
+
+    - name: Run my code
+      run: uv run src/main1.py ${{ secrets.USGS_API_KEY }}
