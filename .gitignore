@@ -16,3 +16,4 @@ usgs_api_key.txt
 data/*
 !data/daily
 !data/gis
+notebooks/

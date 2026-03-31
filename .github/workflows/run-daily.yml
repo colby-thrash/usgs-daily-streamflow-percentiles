@@ -1,10 +1,9 @@
-# on:
-#   schedule:
-#     - cron: '25 8 * * *' # 8:25 AM every day
-#       timezone: 'America/Chicago'
-
-on: 
+on:
   workflow_dispatch:
+
+  schedule:
+    - cron: '21 8 * * *' # 8:21 AM every day
+      timezone: 'America/Chicago'
 
 jobs: 
   run_main:
@@ -20,5 +19,15 @@ jobs:
     - name: Install dependencies
       run: uv sync
 
-    - name: Run my code
-      run: uv run src/main1.py ${{ secrets.USGS_API_KEY }}
+    - name: Run main.py
+      run: uv run ./src/main.py ${{ secrets.USGS_API_KEY }}
+
+    - name: Git push data and map updates to the repo
+      run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add content data/daily
+          git commit -m "update data and map htmls - github action" || echo "No changes to commit"
+
+          git push
