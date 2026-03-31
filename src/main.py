@@ -30,7 +30,7 @@ def main():
     
     activate_usgs_api_key()
     sites = get_usgs_gage_metadata()
-    sites = sites.iloc[-3:]
+    sites = sites.iloc[:]
     sites_id = sites.monitoring_location_id 
     flow_data = get_flow_data_time_series(sites_id, today_str)
         
