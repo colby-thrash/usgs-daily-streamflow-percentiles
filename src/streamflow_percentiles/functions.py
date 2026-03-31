@@ -17,7 +17,7 @@ def activate_usgs_api_key():
     try:
         # check for api key as input argument
         if len(sys.argv) > 1:
-            print('FOUND ARGUMENTS!')
+            print('Found Command Line API Key Argument')
             api_key = sys.argv[1]
 
         else:
