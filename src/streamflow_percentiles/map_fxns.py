@@ -20,7 +20,7 @@ def prep_for_plotting(df, sites, percentile_year_count):
 
     # Add link to site page
     gage_df['Sitepage Link'] = (r'<a href=https://waterdata.usgs.gov/monitoring-location/' + 
-                                gage_df.monitoring_location_id + '>' + gage_df.monitoring_location_id + '</a>')
+                                gage_df.monitoring_location_id + ' target="_blank">' + gage_df.monitoring_location_id + '</a>')
 
     return gage_df
 
