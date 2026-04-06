@@ -22,7 +22,7 @@ jobs:
     - name: Run main.py
       run: |
         uv run ./src/main.py ${{ secrets.USGS_API_KEY }} || 
-        (Start-Sleep -Seconds 5; uv run ./src/main.py ${{ secrets.USGS_API_KEY }})
+        Start-Sleep -Seconds 5; uv run ./src/main.py ${{ secrets.USGS_API_KEY }}
 
     - name: Git push data and map updates to the repo
       run: |
