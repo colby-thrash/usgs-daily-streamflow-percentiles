@@ -112,7 +112,7 @@ def create_gage_condition_map(gage_df, flow_data_type, flow_data_col, map_schema
         m = folium.Map(
                     location=(38.36768, -91.75),
                     zoom_start=7, 
-                    tiles="Cartodb Positron",
+                    tiles="OpenStreetMap",
         )
         
         add_counties_to_map(m)
