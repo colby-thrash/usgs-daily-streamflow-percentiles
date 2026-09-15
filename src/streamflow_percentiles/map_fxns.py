@@ -112,7 +112,8 @@ def create_gage_condition_map(gage_df, flow_data_type, flow_data_col, map_schema
         m = folium.Map(
                     location=(38.36768, -91.75),
                     zoom_start=7, 
-                    tiles="OpenStreetMap",
+                    tiles='https://tiles.stadiamaps.com/tiles/outdoors/{z}/{x}/{y}{r}.png',
+                    attr='&copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
         )
         
         add_counties_to_map(m)
