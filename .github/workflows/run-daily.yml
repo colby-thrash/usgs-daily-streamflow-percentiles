@@ -2,12 +2,12 @@ on:
   workflow_dispatch:
 
   schedule:
-    - cron: '15 4 * * *' # 4:15 AM every day
+    - cron: '00 6 * * *' # 6:00 AM every day
       timezone: 'America/Chicago'
 
 jobs: 
   run_main:
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
 
     steps: 
     - name: Checkout code
@@ -22,7 +22,7 @@ jobs:
     - name: Run main.py
       run: |
         uv run ./src/main.py ${{ secrets.USGS_API_KEY }} || 
-        Start-Sleep -Seconds 5; uv run ./src/main.py ${{ secrets.USGS_API_KEY }}
+        sleep 5; uv run ./src/main.py ${{ secrets.USGS_API_KEY }}
 
     - name: Git push data and map updates to the repo
       run: |
