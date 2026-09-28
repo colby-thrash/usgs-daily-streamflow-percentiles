@@ -1,6 +1,7 @@
 ## Copied from tutorial:
 # https://doi-usgs.github.io/hyswap/examples/site_conditions_examples.html
 
+import os
 import folium
 import geopandas as gpd
 import pandas as pd
@@ -25,7 +26,7 @@ def prep_for_plotting(df, sites, percentile_year_count):
     return gage_df
 
 def load_counties_shapefile():
-    path = r'data\gis\MO_2014_County_Boundaries_shp'
+    path = os.path.join('data', 'gis', 'MO_2014_County_Boundaries_shp')
     crs = 4326
     return gpd.read_file(path).to_crs(crs) #"EPSG:5070")
 

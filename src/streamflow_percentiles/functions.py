@@ -8,7 +8,7 @@ import pandas as pd
 import hyswap
 from .helper_fxns import qaqc_usgs_data, chunk_data
 
-path_data = r'data\daily'
+path_data = os.path.join('data', 'daily')
 if not os.path.isdir(path_data):
     os.makedirs(path_data)
 

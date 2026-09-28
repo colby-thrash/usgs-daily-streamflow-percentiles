@@ -20,7 +20,7 @@ from streamflow_percentiles.percentile_fxns import (
     get_years_used_for_percentile_calcs
     ) 
 
-path_maps = r'content\html-maps'
+path_maps = os.path.join('content', 'html-maps')
 
 def main():
     print("Hello from streamflow-percentiles!")
