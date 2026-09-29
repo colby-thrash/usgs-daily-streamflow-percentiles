@@ -2,8 +2,7 @@ on:
   workflow_dispatch:
 
   schedule:
-    - cron: '00 6 * * *' # 6:00 AM every day
-      timezone: 'America/Chicago'
+    - cron: '07 11 * * *' # UTC -5 for 6:00 AM local time during daylight savings. Used arbitrary minute to try and speed up que. 
 
 jobs: 
   run_main:
@@ -20,9 +19,11 @@ jobs:
       run: uv sync
 
     - name: Run main.py
-      run: |
-        uv run ./src/main.py ${{ secrets.USGS_API_KEY }} || 
-        sleep 5; uv run ./src/main.py ${{ secrets.USGS_API_KEY }}
+      uses: nick-fields/retry@v3
+      with: 
+        timeout_minutes: 10
+        max_attempts: 3
+        command: uv run ./src/main.py ${{ secrets.USGS_API_KEY }}
 
     - name: Git push data and map updates to the repo
       run: |
